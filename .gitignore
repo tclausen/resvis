@@ -4,9 +4,19 @@
 *.dll
 *.so
 *.dylib
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.JPG_t
+*.jpg_t
+*.jpeg_t
+*.JPEG_t
 
 # Test binary, build with `go test -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+*~
