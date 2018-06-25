@@ -1,0 +1,37 @@
+<template>
+<tr>
+	<td>
+		<h4 class="ui image header">
+			<img src="assets/images/wireframe/square-image.png" class="ui mini rounded image">
+			<div class="content">
+				{{ visit.restaurantid }}
+				<div class="sub header">Human Resources	</div>
+      </div>
+		</h4>
+	</td>
+	<td>
+		{{ formatTime(visit.time) }}
+	</td>
+	<td>
+		{{ visit.with }}
+	</td>
+</tr>
+</template>
+
+<script>
+export default {
+  props: {
+    visit: {
+      type: Object,
+      required: true
+		}
+	},
+	methods: {
+		formatTime(t) {
+			var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+			var date = new Date(t);
+			return date.toLocaleDateString("dk-DK",options)
+		}
+	}
+}
+</script>

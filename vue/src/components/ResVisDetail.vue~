@@ -1,0 +1,427 @@
+<template>
+  <v-container fluid>
+    <v-layout row wrap>
+      <v-flex xs0 sm2></v-flex>
+      <v-flex xs12 sm8 mt-5 ref="mycolumn" v-resize="resizecallback">
+        <v-layout column>
+          <v-flex xs12 class="text-xs-center">
+            <v-card fluid>
+              <v-card-text>
+                <v-layout column>
+                  <v-flex xs12>
+                    <div class="headline">{{getResName(visit.restaurantid)}}</div>
+                  </v-flex>
+                  <v-flex xs12>
+                    {{formatTime(visit.time)}}
+                  </v-flex>
+                  <v-flex xs12 v-if="visit.with">
+                    with {{visit.with}}
+                  </v-flex>
+                  <v-flex xs12 v-if="visit.comment" mt-3>
+                    <b>{{visit.comment}}</b>
+                  </v-flex>
+                  <v-flex xs12>
+                    <v-layout row wrap>
+                      <v-flex xs12>
+                        <v-btn flat color="orange" @click="editVisit()" :disabled="busy">Edit</v-btn>
+                        <v-btn flat color="orange" @click="addImages()" :disabled="busy">Add images</v-btn>
+                        <v-btn flat color="orange" @click="removeVisit()" :disabled="busy">Remove</v-btn>
+                      </v-flex>
+                      <v-flex xs12>
+                        <v-layout row>
+                          <v-flex xs6>
+                            <v-switch :label="`Public`" v-model="localIsPublic" :hint="publicLink" persistent-hint></v-switch>
+                            <textarea v-model="publicLink" ref="text"></textarea>
+                          </v-flex>
+                          <v-flex xs6>
+                            <v-btn v-if="localIsPublic" flat color="orange" @click="copyToClipboard('#p1')">Copy link</v-btn>
+                          </v-flex>
+                        </v-layout>
+                      </v-flex>
+                      <label>
+                        <input type="file" id="files" ref="files" multiple v-on:change="handleFileUploads()" accept="image/*" />
+                      </label>
+                    </v-layout>
+                  </v-flex>
+                </v-layout>
+              </v-card-text>
+            </v-card>
+          </v-flex>
+          <v-flex mt-5 v-if="imageData.length">
+            <v-card>
+              <v-card-text>
+                <v-flex xs12 class="text-xs-center">
+                  <div class="headline">
+                    New images
+                  </div>
+                </v-flex>
+              </v-card-text>
+              <v-layout row wrap>
+                <v-flex xs4 v-for="d in imageData" v-bind:key="d">
+                  <img class="preview" :src="d">
+                </v-flex>
+              </v-layout>
+              <v-layout>
+                <v-flex class="text-xs-center" mt-3>
+                  <v-btn color="primary" v-on:click="submit" :disabled="busy" >Save</v-btn>
+                </v-flex>
+              </v-layout>s
+            </v-card>
+          </v-flex>
+          <v-flex class="text-xs-center" mt-3>
+            <v-alert color="error" :value="error">
+              {{error}}
+            </v-alert>
+          </v-flex>
+          <v-flex class="text-xs-center" mt-3>
+            <v-card>
+  <iframe width="600" height="450" frameborder="0" style="border:0" 
+:src="getResAddress(visit.restaurantid)" allowfullscreen>
+</iframe>
+            </v-card>
+          </v-flex>
+        </v-layout>
+        <v-layout row wrap>
+          <v-flex xs12 mt-5 v-for="p in picturesWithPath" :key="p.name">
+            <v-card :key="refreshMedia">
+              <v-card-media :src="p.fullPath" :height="imgHeight(p)" contain></v-card-media>
+              <v-card-text>
+                {{p.comment}}
+              </v-card-text>
+              <v-card-actions>
+                <!--                <v-btn icon>
+                  <v-icon>favorite</v-icon>
+                </v-btn>
+                <v-btn flat v-on:click="rotateImage(p.name)">
+                  Rotate
+                </v-btn>
+-->
+                <v-btn flat v-on:click="editComment(p)">Edit comment</v-btn>
+                <v-btn flat v-on:click="removeImage(p.name)">Remove</v-btn>
+              </v-card-actions>
+            </v-card>
+          </v-flex>
+        </v-layout>
+      </v-flex>
+    </v-layout>
+  </v-container>
+</template>
+
+<script>
+  import axios from 'axios'
+  export default {
+    components: {},
+    data() {
+      return {
+        error: "",
+        publicLink: "",
+        files: [],
+        imageData: [],
+        filesUploaded: [],
+        refreshMedia: 0,
+        busy: false
+      }
+    },
+    methods: {
+      resizecallback() {
+        console.log("Resize")
+        this.refreshMedia = this.refreshMedia + 1
+      },
+      copyToClipboard(element) {
+        console.log("Copy to clipboard")
+        console.log(this.$refs)
+        this.$refs.text.select();
+        console.log("Copying: " + this.$refs.text)
+        document.execCommand('copy');
+      },
+      formatTime(t) {
+        var options = {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        };
+        var date = new Date(t);
+        return date.toLocaleDateString("dk-DK", options)
+      },
+      getResName(id) {
+        if (id == undefined) {
+          return "Undefined id"
+        }
+        console.log("getresname id = ", id)
+        var rs = this.$store.state.user.restaurants
+        console.log("ress = ", rs)
+        if (rs != undefined && id in rs)
+          return rs[id].name
+        return "Unknown"
+      },
+      getResAddress(id) {
+        if (id == undefined) {
+          return "Undefined id"
+        }
+        console.log("getresaddress id = ", id)
+        var rs = this.$store.state.user.restaurants
+        console.log("ress = ", rs)
+        if (rs != undefined && id in rs) {
+          var address = rs[id].street + "," + rs[id].city 
+          console.log("address = ", address)
+          return "https://www.google.com/maps/embed/v1/place?key=AIzaSyDW3b3gV4L1lOAjoMaZA16WlAJehGXWjtU&q="+address
+        }
+        return "Unknown"
+      },
+      editVisit() {
+        console.log("Edit visit")
+        console.log(this.visit)
+        this.error = "Edit visit not implemented yet"
+      },
+      removeVisit() {
+        console.log("Remove visit")
+        var visit = this.visit
+        console.log(visit)
+        if (confirm('Are you sure you want to delete visit to ' + this.getResName(visit.restaurantid) + '?')) {
+          let config = {
+            headers: {
+              "Token": this.$store.state.token
+            }
+          }
+          axios.get('http://tocsig.ddns.net:3000/api/resvis/delete/' + visit.id, config)
+            .then((resp) => {
+              //console.log("resp: " + resp)
+              console.log("id " + visit.id)
+              this.error = ""
+              this.$store.commit("loadUser")
+              this.$router.push("/")
+            })
+            .catch((err) => {
+              console.log(err.response)
+              this.error = "Can't delete restaurant visit: " + err.response
+            });
+        }
+      },
+      addImages() {
+        this.error = ""
+        this.$refs.files.click();
+      },
+      handleFileUploads() {
+        console.log("Handle file uploads - number of files: " + this.$refs.files.files.length)
+        for (var i = 0; i < this.$refs.files.files.length; i++) {
+          var f = this.$refs.files.files[i]
+          var found = false
+          for (var ii = 0; ii < this.files.length; ii++) {
+            console.log(f.name, this.files[ii].name)
+            if (f.name == this.files[ii].name) {
+              found = true
+              break
+            }
+          }
+          if (found) {
+            continue
+          }
+          console.log("push file " + f.name)
+          this.files.push(f)
+          var reader = new FileReader();
+          // Define a callback function to run, when FileReader finishes its job
+          reader.onload = (e) => {
+            // Note: arrow function used here, so that "this.imageData" refers to the imageData of Vue component
+            // Read image as base64 and set to imageData
+            this.imageData.push(e.target.result)
+          }
+          // Start the reader job - read file as a data url (base64 format)
+          reader.readAsDataURL(f);
+        }
+        console.log(this.files)
+      },
+      submit() {
+        console.log("Update resvis");
+        if(this.busy) {
+          this.error = "Busy uploading visit"
+          return
+        }
+        this.busy = true
+        Promise.all([this.submitFiles()])
+          .then(() => {
+            console.log("image upload done")
+            this.submitVisit()
+          })
+      },
+      submitFiles() {
+        console.log("Submit files")
+        let formData = new FormData();
+        for (var i = 0; i < this.files.length; i++) {
+          let file = this.files[i];
+          console.log("Append file ", i)
+          console.log(file)
+          formData.append('files[' + i + ']', file);
+        }
+        let config = {
+          headers: {
+            Token: this.$store.state.token,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          }
+        }
+        var self = this
+        return axios.post("http://tocsig.ddns.net:3000/api/resvis/uploadimage", formData, config)
+          .then(resp => {
+            for (var i = 0; i < resp.data.length; i++) {
+              self.filesUploaded.push(resp.data[i])
+            }
+          })
+          .catch(function () {
+            self.error = "Failed to upload images"
+            console.log('FAILURE!!');
+          });
+      },
+      submitVisit() {
+        console.log("submit visit")
+        var visit = this.visit
+        if (visit.pictures2 == undefined) {
+          visit.pictures2 = []
+        }
+        for (var i = 0; i < this.filesUploaded.length; i++) {
+          visit.pictures2.push({
+            filename: this.filesUploaded[i]
+          })
+        }
+        var json = JSON.stringify(visit);
+        console.log("json: " + json);
+        let config = {
+          headers: {
+            Token: this.$store.state.token
+          }
+        };
+        // Reset state used for uploading files
+        this.files = []
+        this.filesUploaded = []
+        this.imageData = []
+        // Copy visit to force re-computation of this.visit
+        this.visit = JSON.parse(json)
+        visit = this.visit
+        axios
+          .post("http://tocsig.ddns.net:3000/api/resvis/update", json, config)
+          .then(resp => {
+            this.busy = false
+            this.error = "";
+            this.$store.commit("loadUser")
+          })
+          .catch(err => {
+            if (!err.response) {
+              this.busy = false
+              this.error = "No response from server";
+              console.log("No response from server");
+              return;
+            }
+            this.error = "Unknown error";
+          });
+      },
+      removeImage(name) {
+        console.log("Remove image " + name)
+        if (confirm('Are you sure you want to delete image ' + name)) {
+          for (var i = 0; i < this.visit.pictures2.length; i++) {
+            if (this.visit.pictures[i].filename == name) {
+              this.visit.pictures2.splice(i, 1)
+              break
+            }
+          }
+          this.submitVisit();
+        }
+      },
+      editComment(p) {
+        console.log("Edit comment: ", p)
+  //        this.submitVisit();
+      },
+      imgHeight(p) {
+        if (this.$refs.mycolumn != undefined) {
+          var cWidth = this.$refs.mycolumn.clientWidth
+          //console.log((cWidth * p.height) / p.width)
+          return Math.min(1000, (cWidth * p.height) / p.width, p.height)
+        } 
+        //console.log("mycolumn is undefined")
+        return 200
+      },
+      rotateImage(name) {
+        console.log("Rotate image " + name)
+      }
+    },
+    computed: {
+      picturesWithPath() {
+        //console.log("Calculating pictures with path")
+        var pictures2 = this.visit.pictures2
+        if (pictures2 == undefined) {
+          return []
+        }
+        var ps = pictures2.map(function (p) {
+          return {
+            name: p.filename,
+            width: p.width,
+            height: p.height,
+            fullPath: "/static/" + p.filename
+          }
+        })
+        return ps
+      },
+      localIsPublic: {
+        get() {
+          if (this.visit.ispublic) {
+            this.publicLink = "http://tocsig.ddns.net:8080/#/visit/" + this.$store.state.user.id + "/" + this.$route.params
+              .id
+          } else {
+            this.publicLink = ""
+          }
+          return this.visit.ispublic
+        },
+        set(newValue) {
+          this.visit.ispublic = newValue
+          this.submitVisit()
+        }
+      },
+      visit: {
+        get: function () {
+          console.log("Computes visit")
+          if (this.$route.params.id != undefined) {
+            if (this.$store.state.user.resvisits != undefined) {
+              return this.$store.state.user.resvisits[this.$route.params.id]
+            }
+          }
+          return {
+            time: 0,
+            with: "",
+            restaurantid: 0,
+            pictures2: []
+          }
+        },
+        set: function (newVisit) {
+          this.$store.state.user.resvisits[this.$route.params.id] = newVisit
+        }
+      }
+    },
+  }
+
+</script>
+
+<style scoped>
+  input[type="file"] {
+    position: absolute;
+    top: -500px;
+  }
+
+  textarea {
+    position: absolute;
+    top: -500px;
+  }
+
+  img.preview {
+    background-color: white;
+    border: 1px solid #DDD;
+    padding: 5px;
+    max-width: 100%;
+  }
+
+  .rotate90 {
+    -webkit-transform: rotate(90deg);
+    -moz-transform: rotate(90deg);
+    -o-transform: rotate(90deg);
+    -ms-transform: rotate(90deg);
+    transform: rotate(90deg);
+  }
+
+</style>

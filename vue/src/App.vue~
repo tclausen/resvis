@@ -1,0 +1,71 @@
+<template>
+  <v-app>
+    <v-toolbar app v-bind:color="toolbarColor">
+      <img src="/static/ResVisLogo.png" height="40px">
+      <v-toolbar-title>
+        Restaurant Visits
+      </v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-toolbar-items>
+        <v-btn flat to="/">Home</v-btn>
+        <v-btn flat v-if="showAdmin" to="/admin">Admin</v-btn>
+        <v-btn flat v-if="showLogout" @click="logout">Logout</v-btn>
+      </v-toolbar-items>
+    </v-toolbar>
+    <v-content>
+      <router-view/>
+    </v-content>
+  </v-app>
+</template>
+
+<script>
+export default {
+  data () {
+    return {
+      hasAdmin: true,
+      
+    }
+  },
+  methods: {
+    logout() {
+      this.$store.commit("logout", {})
+      this.$router.push("/login")
+      console.log("logout")
+    },
+    login() {
+      this.$router.push("/login")
+    },
+    admin() {
+      this.$router.push("/admin")
+    }
+  },
+  name: 'App',
+  computed: {
+    showAdmin() {
+      var user = this.$store.state.user
+      var userIsAdmin = (user != undefined && user.settings != undefined && user.settings.Admin == "true")
+      console.log("Is admin:", userIsAdmin, user)
+      return userIsAdmin && this.$route.path != "/login"
+    },
+    showLogout() {
+      return this.$route.path != "/login"
+    },
+    toolbarColor() {
+      if(this.$store.state.user == "") {
+        return "primary"
+      }
+      if(this.$store.state.user.settings["DB"] == "test") {
+        return "green"
+      }
+      return "primary"
+    }
+  }
+  
+}
+</script>
+
+<style>
+  a:link {color:#ff0000;}
+  a:visited {color:#0000ff;}
+  a:hover {color:#ffcc00;}
+</style>

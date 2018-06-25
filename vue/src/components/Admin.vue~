@@ -1,0 +1,117 @@
+<template>
+  <v-container fluid>
+    <v-layout row wrap>
+      <v-flex xs12 sm6 offset-sm4 mt-5>
+        <form>
+          <v-layout column>
+            <v-flex>
+              <v-text-field
+                 name="email"
+                 label="Email"
+                 id="email"
+                 type="email"
+                 v-model="email"
+                 required></v-text-field>
+            </v-flex>
+            <v-flex>
+              <v-text-field
+                 name="password"
+                 label="Password"
+                 id="password"
+                 type="password"
+                 v-model="password"
+                 required></v-text-field>
+            </v-flex>
+            <v-flex class="text-xs-center" mt-3>
+              <v-btn color="primary" v-on:click="login">Sign in</v-btn>
+            </v-flex>
+            <v-flex class="text-xs-center" mt-3>
+              <v-alert color="error" :value="error">
+                {{error}}
+              </v-alert>
+            </v-flex>
+          </v-layout>
+        </form>
+      </v-flex>
+    </v-layout>
+  </v-container>
+</template>
+
+<script>
+  import axios from 'axios'
+export default {
+  name: 'Login',
+  data () {
+    return {
+      email: 'toc',
+      password: 'tt',
+      response: {},
+      error: ''
+    }
+  },
+  methods: {
+    login() {
+      console.log("login")
+      if(this.email.trim() == "") {
+        this.error = "No email provided"
+        return
+      }
+      if(this.password == "") {
+        this.error = "No password provided"
+        return
+      }
+      console.log("email", this.email, this.password)
+      var json = "{\"username\": \""+this.email.trim()+"\", \"password\": \""+this.password+"\"}"
+      console.log(json)
+      axios.post('http://tocsig.ddns.net:3000/api/user/login', json)
+        .then((resp) => {
+          this.error = ""
+          console.log("token received:", resp.data.token)
+          this.$store.commit("setToken", {"username":this.email.trim(), "token":resp.data.token})
+          //console.log(resp)
+          this.getUser()
+          this.$router.push("/")
+        })
+        .catch((err) => {
+          this.password = ""
+          if(!err.response) {
+            this.error = "No response from server"
+            console.log("No response from server")
+            return
+          }
+          if(err.response.status == 403) {
+            this.error = "Unknown user or wrong passord"
+          } else {
+            this.error = "Unknown error"
+          }
+        });
+    },
+    getUser() {
+      let config = { headers: { "Token": this.$store.state.token } }
+      axios.get('http://tocsig.ddns.net:3000/api/user/fromToken', config)
+        .then((resp) => {
+          this.error = ""
+          this.$store.commit("setUser", {"user": resp.data})
+          console.log(resp)
+          console.log("name:", resp.data.firstname)
+        })
+        .catch((err) => {
+          console.log("Can't get user from token")
+        });
+    }
+  }
+}
+</script>
+  
+<style>
+  body > .grid {
+    height: 100%;
+  }
+  .image {
+    margin-top: -100px;
+  }
+  .column {
+    max-width: 450px;
+  }
+</style>
+  

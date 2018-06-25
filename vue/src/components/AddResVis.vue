@@ -1,0 +1,336 @@
+<template>
+  <v-container fluid>
+    <v-layout row wrap>
+      <v-flex xs12 sm6 offset-sm3 mt-5>
+        <form>
+          <v-layout column>
+            <!-- Select and create restaurant -->
+            <v-flex>
+              <v-layout row>
+                <v-flex xs10>
+                  <v-select :items="restaurants" v-model="restaurantItem" label="Restaurant" autocomplete item-text="res.name" :hint="hint(restaurantItem)"
+                    return-object persistent-hint>
+                  </v-select>
+                </v-flex>
+                <v-flex xs2>
+                  <v-dialog v-model="dialog" max-width="500px">
+                    <v-btn color="primary" dark slot="activator" class="mb-2" :disabled="busy">New</v-btn>
+                    <v-card>
+                      <v-card-title>
+                        <span class="headline">Add restaurant</span>
+                      </v-card-title>
+                      <v-card-text>
+                        <v-container grid-list-md>
+                          <v-layout wrap>
+                            <v-flex xs12 sm12 md12>
+                              <v-text-field label="Name" v-model="editedItem.name"></v-text-field>
+                              <v-text-field label="Street" v-model="editedItem.address.street"></v-text-field>
+                              <v-text-field label="City" v-model="editedItem.address.city"></v-text-field>
+                              <v-text-field label="Country" v-model="editedItem.address.country"></v-text-field>
+                            </v-flex>
+                          </v-layout>
+                        </v-container>
+                      </v-card-text>
+                      <v-card-actions>
+                        <v-spacer></v-spacer>
+                        <v-btn color="blue darken-1" flat @click.native="closeResDialog">Cancel</v-btn>
+                        <v-btn color="blue darken-1" flat @click.native="saveRes">Save</v-btn>
+                      </v-card-actions>
+                    </v-card>
+                  </v-dialog>
+                </v-flex>
+              </v-layout>
+            </v-flex>
+            <v-flex class="text-xs-center">
+              <v-text-field name="withs" label="With" id="withs" v-model="withs">
+              </v-text-field>
+              <v-text-field name="comment" multi-line textarea rows="3" label="Comment" id="comment" v-model="comment">
+              </v-text-field>
+              <v-date-picker name="date" label="Date" id="date" v-model="date">
+              </v-date-picker>
+            </v-flex>
+
+            <v-flex class="text-xs-center">
+              <div class="container">
+                <div class="large-12 medium-12 small-12 cell">
+                  <label>
+                    <input type="file" id="files" ref="files" multiple v-on:change="handleFileUploads()" accept="image/*" />
+                  </label>
+                  <v-btn color="primary" v-on:click="addImages" :disabled="busy">Add pictures</v-btn>
+                  <!--<v-btn color="primary" v-on:click="submitFiles">Submit</v-btn>-->
+                </div>
+              </div>
+            </v-flex>
+            <v-flex>
+              <v-layout row wrap>
+                <v-flex xs4 v-for="d in imageData" v-bind:key="d">
+                  <img class="preview" :src="d">
+                </v-flex>
+              </v-layout>
+            </v-flex>
+
+            <v-flex class="text-xs-center" mt-3>
+              <v-btn color="blue darken-1" flat @click.native="close" :disabled="busy">Cancel</v-btn>
+              <v-btn color="primary" v-on:click="submit" :disabled="busy">Save</v-btn>
+            </v-flex>
+            <v-flex class="text-xs-center" mt-3>
+              <v-alert color="error" :value="error">
+                {{error}}
+              </v-alert>
+            </v-flex>
+            <v-flex class="text-xs-center" mt-3 v-for='e in errors' v-bind:key="e">
+              <v-alert color="error" :value="e">
+                {{e}}
+              </v-alert>
+            </v-flex>
+          </v-layout>
+        </form>
+      </v-flex>
+    </v-layout>
+  </v-container>
+</template>
+
+<script>
+  import axios from "axios";
+  export default {
+    components: {},
+    data() {
+      return {
+        date: "",
+        response: {},
+        withs: "",
+        comment: "",
+        restaurantItem: {
+          name: "",
+          address: {
+            street: "hej",
+            city: "hej"
+          }
+        },
+        error: "",
+        errors: [],
+        dialog: false,
+        restaurants: [],
+        editedItem: {
+          name: "",
+          address: {}
+        },
+        defaultItem: {
+          name: "",
+          address: {}
+        },
+        files: [],
+        imageData: [],
+        filesUploaded: [],
+        busy: false
+      };
+    },
+    methods: {
+      submit() {
+        console.log("Add resvis");
+        if (this.restaurantItem == "") {
+          this.error = "Please select restaurant";
+          return;
+        }
+        if (this.date == "") {
+          this.error = "Please select a date";
+          return;
+        }
+        Promise.all([this.submitFiles()])
+          .then(() => {
+            console.log("image upload done")
+            this.submitVisit()
+          })
+      },
+      submitVisit() {
+        this.busy = true
+        var time = new Date(this.date).getTime();
+        console.log(time);
+        var visit = {
+          with: this.withs,
+          comment: this.comment,
+          restaurantId: this.restaurantItem.key,
+          time: time,
+          pictures: this.filesUploaded
+        };
+        var json = JSON.stringify(visit);
+        console.log(json);
+        let config = {
+          headers: {
+            Token: this.$store.state.token
+          }
+        };
+        axios
+          .post("http://tocsig.ddns.net:3000/api/resvis/add", json, config)
+          .then(resp => {
+            this.busy = false
+            this.error = "";
+            console.log("add res vis response:", resp.data);
+            console.log(this.$store.state.user);
+            var newVisit = resp.data;
+            this.$store.commit("loadUser")
+            this.$router.push("/");
+          })
+          .catch(err => {
+            this.password = "";
+            this.busy = false
+            if (!err.response) {
+              this.error = "No response from server";
+              console.log("No response from server");
+              return;
+            }
+            this.error = "Unknown error";
+          });
+      },
+      hint(item) {
+        if (item.res != undefined) {
+          return item.res.address.street + ", " + item.res.address.city;
+        }
+        return "";
+      },
+      close() {
+        this.$router.push("/");
+      },
+      closeResDialog() {
+        this.dialog = false;
+        setTimeout(() => {
+          this.editedItem = Object.assign({}, this.defaultItem);
+        }, 300);
+      },
+      saveRes() {
+        this.addRestaurant();
+        this.closeResDialog();
+      },
+      addRestaurant() {
+        this.busy = true
+        var item = JSON.parse(JSON.stringify(this.editedItem));
+        console.log("Adding: " + item.name);
+        var json = JSON.stringify(item);
+        console.log("json:" + json);
+        let config = {
+          headers: {
+            Token: this.$store.state.token
+          }
+        };
+        axios
+          .post("http://tocsig.ddns.net:3000/api/restaurant", json, config)
+          .then(resp => {
+            this.busy = false
+            console.log("received:", resp.data);
+            item.id = resp.data.id;
+            var newResItem = {
+              key: item.id,
+              res: item
+            };
+            console.log("Restaurants before:");
+            console.log(this.restaurants);
+            this.restaurants.push(newResItem);
+            console.log("Restaurants:");
+            console.log(this.restaurants);
+            this.restaurantItem = newResItem;
+            this.error = "";
+            this.$store.state.user.restaurants[item.id] = item;
+          })
+          .catch(err => {
+            this.busy = false
+            console.log(err.response);
+            this.error = "Can't add restaurant: " + err.response.data;
+          });
+      },
+      setRestaurants() {
+        console.log("Computing res list");
+        console.log(this.$store.state.user);
+        if (this.$store.state.user == "") {
+          return [];
+        }
+        var r = this.$store.state.user.restaurants;
+        var a = Object.keys(r).map(function (key) {
+          return {
+            key: key,
+            res: r[key]
+          };
+        });
+        this.restaurants = a;
+      },
+      handleFileUploads() {
+        console.log("Handle file uploads - number of files: " + this.$refs.files.files.length)
+        for (var i = 0; i < this.$refs.files.files.length; i++) {
+          var f = this.$refs.files.files[i]
+          var found = false
+          for (var ii = 0; ii < this.files.length; ii++) {
+            console.log(f.name, this.files[ii].name)
+            if (f.name == this.files[ii].name) {
+              found = true
+              break
+            }
+          }
+          if (found) {
+            continue
+          }
+          console.log("push file " + f.name)
+          this.files.push(f)
+          var reader = new FileReader();
+          // Define a callback function to run, when FileReader finishes its job
+          reader.onload = (e) => {
+            // Note: arrow function used here, so that "this.imageData" refers to the imageData of Vue component
+            // Read image as base64 and set to imageData
+            this.imageData.push(e.target.result)
+          }
+          // Start the reader job - read file as a data url (base64 format)
+          reader.readAsDataURL(f);
+        }
+        console.log(this.files)
+      },
+      submitFiles() {
+        this.busy = true
+        console.log("Submit files")
+        let formData = new FormData();
+        for (var i = 0; i < this.files.length; i++) {
+          let file = this.files[i];
+          console.log("Append file ", i)
+          console.log(file)
+          formData.append('files[' + i + ']', file);
+        }
+        let config = {
+          headers: {
+            Token: this.$store.state.token,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          }
+        }
+        var self = this
+        return axios.post("http://tocsig.ddns.net:3000/api/resvis/uploadimage", formData, config)
+          .then(resp => {
+            for (var i = 0; i < resp.data.length; i++) {
+              self.filesUploaded.push(resp.data[i])
+            }
+          })
+          .catch(function () {
+            self.error = "Failed to upload images"
+            console.log('FAILURE!!');
+          });
+      },
+      addImages() {
+        this.$refs.files.click();
+      },
+    },
+    created: function () {
+      this.setRestaurants();
+    },
+    computed: {}
+  };
+
+</script>
+<style scoped>
+  input[type="file"] {
+    position: absolute;
+    top: -500px;
+  }
+
+  img.preview {
+    background-color: white;
+    border: 1px solid #DDD;
+    padding: 5px;
+    max-width: 100%;
+  }
+
+</style>

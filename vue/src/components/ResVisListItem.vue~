@@ -1,0 +1,76 @@
+<template>
+<v-card>
+  <v-card-media v-if="hasPictures(visit.pictures)"
+     class="white--text" height="200px"
+     :src="getPicture(visit.pictures)"
+     >
+    <v-container fill-height fluid>
+      <v-layout fill-height>
+        <v-flex xs12 align-end flexbox>
+          <span class="headline">{{getResName(visit.restaurantid)}}</span>
+        </v-flex>
+      </v-layout>
+    </v-container>
+  </v-card-media>
+  <v-card-title>
+    <div>
+      <span class="grey--text">{{getResName(visit.restaurantid)}}</span>
+      <span class="grey--text" v-if="hasPictures(visit.pictures)">({{numberOfPictures(visit.pictures)}} images)</span>
+      <br>
+      <span>{{formatTime(visit.time)}} with {{visit.with}}</span>
+    </div>
+  </v-card-title>
+  <v-card-actions>
+    <v-btn flat color="orange" v-on:click="gotoDetail(visit.id)">Details</v-btn>
+  </v-card-actions>
+</v-card>
+</template>
+
+<script>
+export default {
+  props: {
+    visit: {
+      type: Object,
+      required: true
+		}
+	},
+	methods: {
+		formatTime(t) {
+			var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+			var date = new Date(t);
+			return date.toLocaleDateString("dk-DK",options)
+		},
+    getResName(id) {
+      var rs = this.$store.state.user.restaurants
+      if(rs == undefined) {
+        return "Unknown"
+      }
+      if(id in rs)
+        return rs[id].name
+      return "Unknown"
+    },
+    getPicture(pictures) {
+      if(pictures !== undefined && pictures.length > 0) {
+        return "/static/"+pictures[0]
+      }
+      return "no pictures"
+    },
+    hasPictures(pictures) {
+      if(pictures !== undefined && pictures.length > 0) {
+        return true
+      }
+      return false
+    },
+    numberOfPictures(pictures) {
+      if(pictures !== undefined) {
+        return pictures.length
+      }
+      return 0
+    },
+    gotoDetail(id) {
+      this.$router.push("/detail/"+id)
+    }
+
+	}
+}
+</script>

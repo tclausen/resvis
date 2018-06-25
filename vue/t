@@ -1,0 +1,4 @@
+build/webpack.base.conf.js:      ...(config.dev.useEslint ? [] : []),
+build/webpack.base.conf.js~:      ...(config.dev.useEslint ? [createLintingRule()] : []),
+config/index.js:    useEslint: true,
+config/index.js~:    useEslint: true,
