@@ -8,11 +8,10 @@
             <v-card fluid>
               <v-card-media contain>
                 <v-flex xs12 class="text-xs-center">
-                <iframe width="600" height="300" frameborder="0" style="border:0" :src="getResAddress(visit.restaurantid)" allowfullscreen>
-                </iframe>
+                  <iframe width="600" height="300" frameborder="0" style="border:0" :src="getResAddress(visit.restaurantid)" allowfullscreen>
+                  </iframe>
                 </v-flex>
               </v-card-media>
-
               <v-card-text>
                 <v-layout column>
                   <v-flex xs12>
@@ -204,7 +203,7 @@
           if(r.address != undefined) {
             var address = r.address.street + "," + r.address.city 
             console.log("address = ", address)
-            return "https://www.google.com/maps/embed/v1/place?key=AIzaSyDW3b3gV4L1lOAjoMaZA16WlAJehGXWjtU&q="+address
+            return "https://www.google.com/maps/embed/v1/place?key=BIzaSyDW3b3gV4L1lOAjoMaZA16WlAJehGXWjtU&q="+address
             }
         }
         return "Unknown"
